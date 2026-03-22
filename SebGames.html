@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seb'sGames</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #000;
+            --chat-bg: #000000;
+            --chat-bubble: #141414;
+            --border: #222;
+        }
+
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: white;
+            height: 100vh;
+        }
+
+        #snow-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+
+        .view-container {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .view-hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+
+        .hub-title {
+            font-size: 5rem; font-weight: 100; letter-spacing: 1.2rem;
+            text-transform: uppercase; text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            margin-bottom: 30px; text-align: center;
+        }
+
+        .btn-label { margin-top: 15px; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; transition: 0.3s; }
+        .nav-group:hover .btn-label { opacity: 1; color: #fff; }
+
+        .full-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; height: 100%; }
+        .overlay-bar { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        
+        .auth-page { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: var(--chat-bg); overflow: hidden; }
+        .auth-page.active { display: flex; }
+        .auth-card { background: #080808; border: 1px solid var(--border); padding: 40px; border-radius: 24px; width: 100%; max-width: 400px; }
+        .auth-input { width: 100%; background: #111; border: 1px solid #333; border-radius: 12px; padding: 14px; color: white; outline: none; margin-bottom: 15px; }
+        
+        .chat-layout { display: flex; flex: 1; overflow: hidden; width: 100%; height: calc(100% - 60px); }
+        .user-sidebar { width: 240px; border-right: 1px solid var(--border); background: #050505; overflow-y: auto; padding: 20px; flex-shrink: 0; }
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: #000; height: 100%; overflow: hidden; }
+
+        #chat-display { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; scroll-behavior: smooth; }
+        #chat-display::-webkit-scrollbar { width: 6px; }
+        #chat-display::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .chat-msg { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-end; }
+        .chat-pfp, .side-pfp { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #111; border: 1px solid #333; flex-shrink: 0; }
+        .chat-bubble { background: var(--chat-bubble); padding: 12px 16px; border-radius: 18px 18px 18px 0; max-width: 80%; border: 1px solid #222; }
+        .chat-user { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        
+        .user-card { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; margin-bottom: 4px; transition: 0.2s; }
+
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 30px; width: 100%; }
+        #game-container iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+
+<canvas id="snow-canvas"></canvas>
+
+<div id="home-view" class="view-container">
+    <h1 class="hub-title">Seb's Games</h1>
+    <div class="flex gap-12">
+        <div class="nav-group flex flex-col items-center">
+            <button class="w-[140px] h-[140px] bg-white/5 border border-white/10 rounded-[35px] flex items-center justify-center hover:scale-110 transition shadow-2xl" onclick="toggleView('games')">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2"><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/><path d="M18 7H6a4 4 0 0 0-4 4v3a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4v-3a4 4 0 0 0-4-4z"/></svg>
+            </button>
+            <span class="btn-label">Library</span>
+        </div>
+        <div class="nav-group flex flex-col items-center">
+            <button class="w-[140px] h-[140px] bg-white/5 border border-white/10 rounded-[35px] flex items-center justify-center hover:scale-110 transition shadow-2xl" onclick="openChat()">
+                <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <span class="btn-label">Chat</span>
+        </div>
+        <div class="nav-group flex flex-col items-center">
+            <button class="w-[140px] h-[140px] bg-white/5 border border-white/10 rounded-[35px] flex items-center justify-center hover:scale-110 transition shadow-2xl" onclick="openLink()">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </button>
+            <span class="btn-label">OPEN NEXUS</span>
+        </div>
+        <div class="nav-group flex flex-col items-center">
+            <button class="w-[140px] h-[140px] bg-white/5 border border-white/10 rounded-[35px] flex items-center justify-center hover:scale-110 transition shadow-2xl" onclick="cloakPage()">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+            </button>
+            <span class="btn-label">CLOAK</span>
+        </div>
+    </div>
+</div>
+
+<div id="games-view" class="view-container view-hidden bg-black overflow-y-auto block">
+    <div class="p-8 flex justify-between items-center sticky top-0 bg-black z-50 border-b border-white/10">
+        <div class="flex items-center gap-6">
+            <h2 class="text-3xl font-black italic uppercase">Games</h2>
+            <input type="text" id="game-search" placeholder="SEARCH..." oninput="searchGames(this.value)" class="bg-white/5 border border-white/10 rounded-full px-6 py-2 text-xs font-bold outline-none w-[250px]">
+        </div>
+        <button onclick="toggleView('home')" class="bg-white text-black px-8 py-2 rounded-full font-bold">BACK</button>
+    </div>
+    <div id="game-grid" class="game-grid max-w-7xl mx-auto"></div>
+</div>
+
+<div id="chat-overlay" class="full-overlay">
+    <div class="overlay-bar">
+        <span class="font-black text-white text-sm tracking-widest uppercase">Community</span>
+        <div class="flex gap-3">
+            <button id="profile-btn" class="hidden border border-white/20 hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-black transition" onclick="showPage('page-settings')">PROFILE</button>
+            <button class="bg-white text-black px-6 py-2 rounded-xl font-black" onclick="closeChat()">EXIT</button>
+        </div>
+    </div>
+
+    <div id="page-login" class="auth-page active">
+        <div class="auth-card">
+            <h2 class="text-3xl font-black mb-6 text-center">LOGIN</h2>
+            <input type="text" id="login-user" placeholder="Username" class="auth-input">
+            <input type="password" id="login-pass" placeholder="Password" class="auth-input">
+            <button onclick="handleAuth('login')" class="w-full bg-white text-black py-4 rounded-xl font-black">CONTINUE</button>
+            <p class="text-center text-xs mt-6 opacity-50 cursor-pointer" onclick="showPage('page-register')">Need an account? <span class="underline">Register</span></p>
+        </div>
+    </div>
+
+    <div id="page-register" class="auth-page">
+        <div class="auth-card">
+            <h2 class="text-3xl font-black mb-6 text-center">REGISTER</h2>
+            <input type="text" id="reg-user" placeholder="Username" class="auth-input">
+            <input type="password" id="reg-pass" placeholder="Password" class="auth-input">
+            <div class="flex items-center gap-4 mb-4 bg-white/5 p-3 rounded-xl border border-white/10">
+                <img id="reg-pfp-preview" src="https://ui-avatars.com/api/?name=?" class="side-pfp !w-[50px] !h-[50px]">
+                <div class="flex-1">
+                    <label class="text-[9px] font-black uppercase opacity-40">PFP URL</label>
+                    <input type="text" id="reg-pfp" placeholder="Image URL" class="auth-input !mb-0 !text-[10px] !p-2" oninput="updateRegPreview(this.value)">
+                </div>
+            </div>
+            <button onclick="handleAuth('reg')" class="w-full bg-white text-black py-4 rounded-xl font-black">CREATE</button>
+            <p class="text-center text-xs mt-6 opacity-50 cursor-pointer" onclick="showPage('page-login')">Back to login</p>
+        </div>
+    </div>
+
+    <div id="page-settings" class="auth-page">
+        <div class="auth-card">
+            <h2 class="text-2xl font-black mb-8 text-center uppercase">Profile Settings</h2>
+            <div class="space-y-4">
+                <div class="flex items-center gap-4 bg-white/5 p-4 rounded-2xl">
+                    <img id="edit-pfp-preview" src="" class="side-pfp !w-16 !h-16 border-white">
+                    <input type="text" id="edit-pfp-input" placeholder="New PFP URL" class="auth-input !mb-0 !text-xs" oninput="document.getElementById('edit-pfp-preview').src = this.value">
+                </div>
+                <input type="color" id="edit-color-input" class="w-full h-12 bg-transparent cursor-pointer rounded-lg border border-white/10">
+                <button onclick="saveSettings()" class="w-full bg-white text-black py-4 rounded-xl font-black">SAVE</button>
+                <button onclick="showPage('page-chat')" class="w-full bg-[#111] border border-white/10 py-4 rounded-xl font-black text-sm">CANCEL</button>
+                <button onclick="logout()" class="w-full text-red-500 text-[10px] font-black uppercase mt-4">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-chat" class="auth-page !p-0">
+        <div class="chat-layout">
+            <div class="user-sidebar">
+                <h3 class="text-[9px] font-black text-white/30 uppercase tracking-[2px] mb-4">Users (<span id="user-count">0</span>)</h3>
+                <div id="user-list"></div>
+            </div>
+            <div class="chat-main">
+                <div id="chat-display"></div>
+                <div class="p-4 bg-black border-t border-white/10 flex gap-3">
+                    <input type="text" id="chat-input" placeholder="Message..." class="flex-1 bg-[#080808] p-4 rounded-xl outline-none" onkeydown="if(event.key==='Enter') sendMsg()">
+                    <button onclick="sendMsg()" class="bg-white text-black px-10 rounded-xl font-black">SEND</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="player" class="full-overlay">
+    <div class="overlay-bar"><span id="p-name" class="font-black italic uppercase"></span><button class="bg-white text-black px-6 py-2 rounded-xl font-black" onclick="closeGame()">EXIT</button></div>
+    <div id="game-container" class="flex-1"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIwkgHWSkycjQ9jqUzrZTvOR57gE-MtwM",
+        authDomain: "sebs-games.firebaseapp.com",
+        projectId: "sebs-games",
+        storageBucket: "sebs-games.firebasestorage.app",
+        messagingSenderId: "96454387870",
+        appId: "1:96454387870:web:8cd61d2060a2b29169b38f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    let user = JSON.parse(localStorage.getItem('sebUser'));
+
+    // --- HEARTBEAT LOGIC ---
+    function startHeartbeat() {
+        if (!user) return;
+        const update = async () => {
+            try {
+                await updateDoc(doc(db, "users", user.user), {
+                    lastSeen: serverTimestamp()
+                });
+            } catch (e) { console.error("Heartbeat error"); }
+        };
+        update();
+        setInterval(update, 30000);
+    }
+    if (user) startHeartbeat();
+
+    window.openLink = () => window.open('https://sites.google.com/view/bovalt/', '_blank');
+
+    // --- CLOAK: Open page in about:blank ---
+    window.cloakPage = () => {
+        const pageHTML = document.documentElement.outerHTML;
+        const win = window.open('about:blank', '_blank');
+        win.document.open();
+        win.document.write(pageHTML);
+        win.document.close();
+    };
+
+    window.showPage = (id) => {
+        document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'page-chat') {
+            document.getElementById('profile-btn').classList.remove('hidden');
+            loadSidebar();
+        }
+    };
+
+    window.loadSidebar = () => {
+        onSnapshot(collection(db, "users"), (s) => {
+            const list = document.getElementById('user-list');
+            if(!list) return;
+            list.innerHTML = "";
+            document.getElementById('user-count').innerText = s.size;
+            const now = Date.now();
+            s.forEach(d => {
+                const u = d.data();
+                const lastSeen = u.lastSeen?.toMillis() || 0;
+                const isOnline = (now - lastSeen) < 60000;
+                list.innerHTML += `
+                    <div class="user-card">
+                        <div class="relative">
+                            <img src="${u.pfp}" class="side-pfp" onerror="this.src='https://ui-avatars.com/api/?name=${u.user}'">
+                            <div class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${isOnline ? 'bg-green-500' : 'bg-gray-500'}"></div>
+                        </div>
+                        <span class="text-[11px] font-bold" style="color:${u.color || '#fff'}">${u.user}</span>
+                    </div>`;
+            });
+        });
+    };
+
+    window.handleAuth = async (type) => {
+        const u = document.getElementById(type + '-user').value.trim();
+        const p = document.getElementById(type + '-pass').value;
+        if(!u || !p) return alert("Fill all fields");
+        const ref = doc(db, "users", u);
+        const snap = await getDoc(ref);
+        if(type === 'login') {
+            if(!snap.exists() || snap.data().pass !== p) return alert("Invalid");
+            user = snap.data();
+        } else {
+            if(snap.exists()) return alert("Taken");
+            user = { user: u, pass: p, pfp: document.getElementById('reg-pfp').value || `https://ui-avatars.com/api/?name=${u}`, color: '#ffffff', banned: false };
+            await setDoc(ref, user);
+        }
+        localStorage.setItem('sebUser', JSON.stringify(user));
+        startHeartbeat();
+        initChat(); showPage('page-chat');
+    };
+
+    function initChat() {
+        const disp = document.getElementById('chat-display');
+        onSnapshot(query(collection(db, "messages"), orderBy("time", "asc")), (s) => {
+            if(!disp) return;
+            disp.innerHTML = "";
+            s.forEach(d => {
+                const m = d.data();
+                disp.innerHTML += `<div class="chat-msg"><img src="${m.pfp}" class="chat-pfp" onerror="this.src='https://ui-avatars.com/api/?name=${m.user}'"><div class="chat-bubble"><div class="chat-user" style="color:${m.color}">${m.user}</div><div class="text-sm">${m.text}</div></div></div>`;
+            });
+            setTimeout(() => { disp.scrollTop = disp.scrollHeight; }, 100);
+        });
+    }
+
+    window.sendMsg = async () => {
+        const i = document.getElementById('chat-input');
+        if(!i.value.trim() || !user) return;
+        try {
+            const userSnap = await getDoc(doc(db, "users", user.user));
+            if (userSnap.exists() && userSnap.data().banned === true) {
+                alert("⛔ ACCESS DENIED: You are banned.");
+                i.value = "";
+                return;
+            }
+            await addDoc(collection(db, "messages"), { 
+                text: i.value, 
+                user: user.user, 
+                pfp: user.pfp, 
+                color: user.color, 
+                time: serverTimestamp() 
+            });
+            i.value = "";
+        } catch (e) { console.error(e); }
+    };
+
+    window.saveSettings = async () => {
+        const newPfp = document.getElementById('edit-pfp-input').value;
+        const newColor = document.getElementById('edit-color-input').value;
+        user.pfp = newPfp; user.color = newColor;
+        await updateDoc(doc(db, "users", user.user), { pfp: newPfp, color: newColor });
+        localStorage.setItem('sebUser', JSON.stringify(user));
+        showPage('page-chat');
+    };
+
+    window.openChat = () => { document.getElementById('chat-overlay').style.display = 'flex'; user ? (initChat(), showPage('page-chat')) : showPage('page-login'); };
+    window.closeChat = () => document.getElementById('chat-overlay').style.display = 'none';
+    window.logout = () => { localStorage.removeItem('sebUser'); location.reload(); };
+    window.updateRegPreview = (url) => { document.getElementById('reg-pfp-preview').src = url || 'https://ui-avatars.com/api/?name=?'; };
+    window.toggleView = (v) => {
+        document.getElementById('home-view').className = v === 'home' ? 'view-container' : 'view-container view-hidden';
+        document.getElementById('games-view').className = v === 'games' ? 'view-container bg-black overflow-y-auto block' : 'view-container view-hidden';
+        if(v === 'games') renderGamesList();
+    };
+    window.closeGame = () => { document.getElementById('player').style.display = 'none'; document.getElementById('game-container').innerHTML = ''; };
+
+    window.renderGamesList = async () => {
+        const grid = document.getElementById('game-grid');
+        grid.innerHTML = "<p class='col-span-full text-center py-20 opacity-20'>CONNECTING...</p>";
+        try {
+            const res = await fetch("https://cdn.jsdelivr.net/gh/gn-math/assets@main/zones.json");
+            const data = await res.json();
+            const games = (data.zones || data).filter(i => i.name && !i.name.toUpperCase().includes('SUGGEST'));
+            grid.innerHTML = "";
+            games.forEach(g => {
+                const cover = g.cover.replace('{COVER_URL}', "https://cdn.jsdelivr.net/gh/gn-math/covers@main");
+                const div = document.createElement('div');
+                div.className = "game-card bg-white/5 border border-white/5 rounded-2xl overflow-hidden hover:border-white transition-all cursor-pointer group";
+                div.setAttribute('data-name', g.name);
+                div.innerHTML = `<div class="aspect-video overflow-hidden"><img src="${cover}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"></div><div class="p-4 font-black text-center text-[10px] uppercase">${g.name}</div>`;
+                div.onclick = () => {
+                    document.getElementById('player').style.display = 'flex';
+                    document.getElementById('p-name').innerText = g.name;
+                    document.getElementById('game-container').innerHTML = `<iframe src="${g.url.replace('{HTML_URL}', "https://raw.githack.com/gn-math/html/main")}" allowfullscreen></iframe>`;
+                };
+                grid.appendChild(div);
+            });
+        } catch (e) { grid.innerHTML = `<p class='col-span-full text-center'>Error loading.</p>`; }
+    };
+
+    window.searchGames = (q) => {
+        const cards = document.querySelectorAll('.game-card');
+        cards.forEach(c => c.style.display = c.getAttribute('data-name').toLowerCase().includes(q.toLowerCase()) ? 'block' : 'none');
+    };
+
+    const canvas = document.getElementById('snow-canvas');
+    const ctx = canvas.getContext('2d');
+    let flakes = Array.from({length: 80}, () => ({ x: Math.random()*innerWidth, y: Math.random()*innerHeight, s: Math.random()*2+1, d: Math.random()+0.5 }));
+    function animate() {
+        ctx.clearRect(0,0,innerWidth,innerHeight); ctx.fillStyle = "white"; ctx.beginPath();
+        flakes.forEach(f => { ctx.moveTo(f.x, f.y); ctx.arc(f.x, f.y, f.s, 0, 7); f.y += f.d; if(f.y > innerHeight) f.y = -10; });
+        ctx.fill(); requestAnimationFrame(animate);
+    }
+    canvas.width = innerWidth; canvas.height = innerHeight; animate();
+</script>
+</body>
+</html>
